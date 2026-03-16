@@ -73,11 +73,17 @@ jobs:
         with:
           path: artifacts
 
+      - name: Rename binaries
+        run: |
+          mv artifacts/curlu-linux-amd64/curlu artifacts/curlu-linux-amd64.bin
+          mv artifacts/curlu-windows-amd64/curlu.exe artifacts/curlu-windows-amd64.exe
+          mv artifacts/curlu-macos-arm64/curlu artifacts/curlu-macos-arm64.bin
+
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            artifacts/curlu-linux-amd64/curlu
-            artifacts/curlu-windows-amd64/curlu.exe
-            artifacts/curlu-macos-arm64/curlu
+            artifacts/curlu-linux-amd64.bin
+            artifacts/curlu-windows-amd64.exe
+            artifacts/curlu-macos-arm64.bin
           generate_release_notes: true
