@@ -10,40 +10,22 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            artifact: curlu-linux-amd64
-            binary: curlu
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            artifact: curlu-windows-amd64
-            binary: curlu.exe
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            artifact: curlu-macos-arm64
-            binary: curlu
-
-    runs-on: ${{ matrix.os }}
-
+  build-linux:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}
+          targets: x86_64-unknown-linux-gnu
 
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
         with:
-          key: ${{ matrix.target }}
+          key: x86_64-unknown-linux-gnu
 
       - name: Install Linux dependencies
-        if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install -y libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev \
@@ -52,16 +34,74 @@ jobs:
             libxcb-randr0-dev libxcb-composite0-dev
 
       - name: Build
-        run: cargo build --release --target ${{ matrix.target }}
+        run: cargo build --release --target x86_64-unknown-linux-gnu
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
-          path: target/${{ matrix.target }}/release/${{ matrix.binary }}
+          name: curlu-linux-amd64
+          path: target/x86_64-unknown-linux-gnu/release/curlu
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: x86_64-pc-windows-msvc
+
+      - name: Build
+        run: cargo build --release --target x86_64-pc-windows-msvc
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: curlu-windows-amd64
+          path: target/x86_64-pc-windows-msvc/release/curlu.exe
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: aarch64-apple-darwin
+
+      - name: Build
+        run: cargo build --release --target aarch64-apple-darwin
+
+      - name: Create .app bundle
+        run: |
+          mkdir -p Curlu.app/Contents/MacOS
+          cp target/aarch64-apple-darwin/release/curlu Curlu.app/Contents/MacOS/curlu
+          cp macos/Info.plist Curlu.app/Contents/Info.plist
+
+      - name: Create DMG
+        run: |
+          hdiutil create -volname "Curlu" -srcfolder Curlu.app -ov -format UDZO curlu-macos-arm64.dmg
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: curlu-macos-arm64
+          path: curlu-macos-arm64.dmg
 
   release:
-    needs: build
+    needs: [build-linux, build-windows, build-macos]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
@@ -75,15 +115,15 @@ jobs:
 
       - name: Rename binaries
         run: |
-          mv artifacts/curlu-linux-amd64/curlu artifacts/curlu-linux-amd64.bin
+          mv artifacts/curlu-linux-amd64/curlu artifacts/curlu-linux-amd64
           mv artifacts/curlu-windows-amd64/curlu.exe artifacts/curlu-windows-amd64.exe
-          mv artifacts/curlu-macos-arm64/curlu artifacts/curlu-macos-arm64.bin
+          mv artifacts/curlu-macos-arm64/curlu-macos-arm64.dmg artifacts/curlu-macos-arm64.dmg
 
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            artifacts/curlu-linux-amd64.bin
+            artifacts/curlu-linux-amd64
             artifacts/curlu-windows-amd64.exe
-            artifacts/curlu-macos-arm64.bin
+            artifacts/curlu-macos-arm64.dmg
           generate_release_notes: true
