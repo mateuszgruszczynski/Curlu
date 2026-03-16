@@ -21,29 +21,36 @@ pub fn json(text: &str, font_id: egui::FontId) -> LayoutJob {
         ..Default::default()
     };
 
-    let mut expect_key = false;
+    // Track whether we're inside an object (expect keys) or array (expect values)
+    // true = object context, false = array context
+    let mut context_stack: Vec<bool> = Vec::new();
+
+    let in_object = |stack: &[bool]| stack.last().copied().unwrap_or(false);
 
     while i < len {
         let c = chars[i];
         match c {
-            '{' | '[' => {
+            '{' => {
                 job.append(&String::from(c), 0.0, fmt(col_punct));
-                expect_key = c == '{';
+                context_stack.push(true);
+                i += 1;
+            }
+            '[' => {
+                job.append(&String::from(c), 0.0, fmt(col_punct));
+                context_stack.push(false);
                 i += 1;
             }
             '}' | ']' => {
                 job.append(&String::from(c), 0.0, fmt(col_punct));
-                expect_key = false;
+                context_stack.pop();
                 i += 1;
             }
             ':' => {
                 job.append(":", 0.0, fmt(col_punct));
-                expect_key = false;
                 i += 1;
             }
             ',' => {
                 job.append(",", 0.0, fmt(col_punct));
-                expect_key = true;
                 i += 1;
             }
             '"' => {
@@ -59,11 +66,18 @@ pub fn json(text: &str, font_id: egui::FontId) -> LayoutJob {
                     i += 1;
                 }
                 let s: String = chars[start..i].iter().collect();
-                let color = if expect_key { col_key } else { col_string };
+
+                // In object context, a string followed by ':' is a key
+                let is_key = in_object(&context_stack) && {
+                    let mut j = i;
+                    while j < len && chars[j].is_ascii_whitespace() {
+                        j += 1;
+                    }
+                    j < len && chars[j] == ':'
+                };
+
+                let color = if is_key { col_key } else { col_string };
                 job.append(&s, 0.0, fmt(color));
-                if expect_key {
-                    expect_key = false;
-                }
             }
             c if c.is_ascii_digit() || c == '-' => {
                 let start = i;

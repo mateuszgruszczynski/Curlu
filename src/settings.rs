@@ -3,23 +3,15 @@ use std::path::PathBuf;
 
 fn config_path() -> PathBuf {
     let mut path = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
-    path.push("rttp");
+    path.push("curlu");
     std::fs::create_dir_all(&path).ok();
     path.push("settings.json");
     path
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Default)]
 pub struct Settings {
     pub default_directory: Option<String>,
-}
-
-impl Default for Settings {
-    fn default() -> Self {
-        Self {
-            default_directory: None,
-        }
-    }
 }
 
 impl Settings {

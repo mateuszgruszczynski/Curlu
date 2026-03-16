@@ -39,17 +39,19 @@ impl Method {
     }
 }
 
-impl Method {
-    pub fn from_str_curl(s: &str) -> Option<Method> {
+impl FromStr for Method {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "GET" => Some(Method::Get),
-            "POST" => Some(Method::Post),
-            "PUT" => Some(Method::Put),
-            "PATCH" => Some(Method::Patch),
-            "DELETE" => Some(Method::Delete),
-            "HEAD" => Some(Method::Head),
-            "OPTIONS" => Some(Method::Options),
-            _ => None,
+            "GET" => Ok(Method::Get),
+            "POST" => Ok(Method::Post),
+            "PUT" => Ok(Method::Put),
+            "PATCH" => Ok(Method::Patch),
+            "DELETE" => Ok(Method::Delete),
+            "HEAD" => Ok(Method::Head),
+            "OPTIONS" => Ok(Method::Options),
+            _ => Err(()),
         }
     }
 }
@@ -87,7 +89,6 @@ impl SavedRequest {
             .collect::<Vec<_>>()
             .join(" ");
 
-        // Remove trailing backslashes that got joined
         let joined = joined.replace(" \\ ", " ");
 
         let tokens = shell_tokenize(&joined);
@@ -106,7 +107,7 @@ impl SavedRequest {
                 "-X" | "--request" => {
                     i += 1;
                     if i < tokens.len() {
-                        method = Method::from_str_curl(&tokens[i]).unwrap_or(Method::Get);
+                        method = tokens[i].parse().unwrap_or(Method::Get);
                     }
                 }
                 "-H" | "--header" => {
