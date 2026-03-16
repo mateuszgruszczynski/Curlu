@@ -88,7 +88,9 @@ jobs:
         run: |
           mkdir -p Curlu.app/Contents/MacOS
           cp target/aarch64-apple-darwin/release/curlu Curlu.app/Contents/MacOS/curlu
+          chmod +x Curlu.app/Contents/MacOS/curlu
           cp macos/Info.plist Curlu.app/Contents/Info.plist
+          codesign --force --deep --sign - Curlu.app
 
       - name: Create DMG
         run: |
