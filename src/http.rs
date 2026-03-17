@@ -209,7 +209,10 @@ pub struct Response {
 }
 
 pub fn send_request(method: Method, url: &str, raw_headers: &str, body: &str) -> Response {
-    let client = Client::new();
+    let client = Client::builder()
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap_or_else(|_| Client::new());
 
     let mut headers = HeaderMap::new();
     for line in raw_headers.lines() {
