@@ -6,6 +6,16 @@ use crate::highlight;
 use crate::http::{self, Method, Response, SavedRequest};
 use crate::settings::Settings;
 
+/// A TextBuffer wrapper that allows selection/copy but silently ignores all edits.
+struct ReadOnlyBuf<'a>(&'a str);
+
+impl egui::TextBuffer for ReadOnlyBuf<'_> {
+    fn is_mutable(&self) -> bool { false }
+    fn as_str(&self) -> &str { self.0 }
+    fn insert_text(&mut self, _text: &str, _char_index: usize) -> usize { 0 }
+    fn delete_char_range(&mut self, _char_range: std::ops::Range<usize>) {}
+}
+
 enum DirEntry {
     File { name: String, path: PathBuf },
     Dir { name: String, path: PathBuf, children: Vec<DirEntry> },
@@ -61,10 +71,9 @@ struct ColumnConfig<'a> {
     header_label: &'a str,
     body_label: &'a str,
     headers_text: &'a mut String,
-    headers_interactive: bool,
+    editable: bool,
     headers_hint: &'a str,
     body_text: &'a mut String,
-    body_interactive: bool,
     body_hint: &'a str,
     header_scroll_id: &'a str,
     body_scroll_id: &'a str,
@@ -89,15 +98,24 @@ fn render_column(ui: &mut egui::Ui, headers_height: f32, cfg: ColumnConfig<'_>) 
                 egui::ScrollArea::vertical()
                     .id_salt(cfg.header_scroll_id)
                     .show(ui, |ui: &mut egui::Ui| {
-                        ui.add_sized(
-                            ui.available_size(),
-                            egui::TextEdit::multiline(cfg.headers_text)
-                                .font(egui::TextStyle::Monospace)
-                                .hint_text(cfg.headers_hint)
-                                .interactive(cfg.headers_interactive)
-                                .layouter(cfg.header_layouter)
-                                .frame(false),
-                        );
+                        if cfg.editable {
+                            ui.add_sized(
+                                ui.available_size(),
+                                egui::TextEdit::multiline(cfg.headers_text)
+                                    .font(egui::TextStyle::Monospace)
+                                    .hint_text(cfg.headers_hint)
+                                    .layouter(cfg.header_layouter)
+                                    .frame(false),
+                            );
+                        } else {
+                            ui.add_sized(
+                                ui.available_size(),
+                                egui::TextEdit::multiline(&mut ReadOnlyBuf(cfg.headers_text))
+                                    .font(egui::TextStyle::Monospace)
+                                    .layouter(cfg.header_layouter)
+                                    .frame(false),
+                            );
+                        }
                     });
             });
         },
@@ -115,15 +133,24 @@ fn render_column(ui: &mut egui::Ui, headers_height: f32, cfg: ColumnConfig<'_>) 
                 egui::ScrollArea::vertical()
                     .id_salt(cfg.body_scroll_id)
                     .show(ui, |ui: &mut egui::Ui| {
-                        ui.add_sized(
-                            ui.available_size(),
-                            egui::TextEdit::multiline(cfg.body_text)
-                                .font(egui::TextStyle::Monospace)
-                                .hint_text(cfg.body_hint)
-                                .interactive(cfg.body_interactive)
-                                .layouter(cfg.body_layouter)
-                                .frame(false),
-                        );
+                        if cfg.editable {
+                            ui.add_sized(
+                                ui.available_size(),
+                                egui::TextEdit::multiline(cfg.body_text)
+                                    .font(egui::TextStyle::Monospace)
+                                    .hint_text(cfg.body_hint)
+                                    .layouter(cfg.body_layouter)
+                                    .frame(false),
+                            );
+                        } else {
+                            ui.add_sized(
+                                ui.available_size(),
+                                egui::TextEdit::multiline(&mut ReadOnlyBuf(cfg.body_text))
+                                    .font(egui::TextStyle::Monospace)
+                                    .layouter(cfg.body_layouter)
+                                    .frame(false),
+                            );
+                        }
                     });
             });
         },
@@ -339,8 +366,7 @@ impl eframe::App for App {
                 let url_font = egui::FontId::proportional(18.0);
                 ui.add(egui::TextEdit::singleline(&mut self.url).desired_width(ui.available_width() - 180.0).font(url_font));
 
-                let send_label = if is_sending { "Sending..." } else { "Send" };
-                if ui.add_enabled(!is_sending, egui::Button::new(egui::RichText::new(send_label).size(18.0))).clicked() {
+                if ui.add_enabled(!is_sending, egui::Button::new(egui::RichText::new("Send").size(18.0))).clicked() {
                     self.send_request(ctx);
                 }
                 if ui.button(egui::RichText::new("Save").size(18.0)).clicked() {
@@ -358,10 +384,9 @@ impl eframe::App for App {
                     header_label: "Request Headers",
                     body_label: "Request Body",
                     headers_text: &mut self.request_headers,
-                    headers_interactive: true,
+                    editable: true,
                     headers_hint: "Content-Type: application/json",
                     body_text: &mut self.request_body,
-                    body_interactive: true,
                     body_hint: "{\"key\": \"value\"}",
                     header_scroll_id: "req_headers_scroll",
                     body_scroll_id: "req_body_scroll",
@@ -373,10 +398,9 @@ impl eframe::App for App {
                     header_label: "Response Headers",
                     body_label: "Response Body",
                     headers_text: &mut self.response_headers,
-                    headers_interactive: false,
+                    editable: false,
                     headers_hint: "",
                     body_text: &mut self.response_body,
-                    body_interactive: false,
                     body_hint: "",
                     header_scroll_id: "resp_headers_scroll",
                     body_scroll_id: "resp_body_scroll",
