@@ -15,6 +15,14 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "Curlu - Curl UI",
         options,
-        Box::new(|_cc| Ok(Box::new(app::App::default()))),
+        Box::new(|cc| {
+            let scale = if cfg!(target_os = "linux") {
+                2.0
+            } else {
+                cc.egui_ctx.pixels_per_point()
+            };
+            cc.egui_ctx.set_pixels_per_point(scale);
+            Ok(Box::new(app::App::default()))
+        }),
     )
 }

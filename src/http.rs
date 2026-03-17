@@ -263,9 +263,17 @@ pub fn send_request(method: Method, url: &str, raw_headers: &str, body: &str) ->
                 body,
             }
         }
-        Err(e) => Response {
-            headers: String::new(),
-            body: format!("Error: {e}"),
-        },
+        Err(e) => {
+            let mut msg = format!("Error: {e}");
+            let mut source = std::error::Error::source(&e);
+            while let Some(cause) = source {
+                msg.push_str(&format!("\n  caused by: {cause}"));
+                source = std::error::Error::source(cause);
+            }
+            Response {
+                headers: String::new(),
+                body: msg,
+            }
+        }
     }
 }
