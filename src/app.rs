@@ -279,6 +279,10 @@ impl eframe::App for App {
         theme::apply(&mut style);
         ctx.set_style(style);
 
+        if cfg!(target_os = "linux") {
+            ctx.set_pixels_per_point(theme::LINUX_SCALE);
+        }
+
         // Check for completed async response
         if let Some(rx) = &self.pending_response
             && let Ok(resp) = rx.try_recv() {
