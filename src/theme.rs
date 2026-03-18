@@ -45,7 +45,7 @@ pub const WINDOW_MIN_SIZE: [f32; 2] = [600.0, 400.0];
 pub const SIDE_PANEL_MIN_WIDTH: f32 = 250.0;
 
 // Scaling
-pub const LINUX_SCALE: f32 = 2.0;
+pub const LINUX_SCALE: f32 = 1.0;
 
 // Toolbar offset for URL width calculation
 pub const URL_WIDTH_OFFSET: f32 = 240.0;
