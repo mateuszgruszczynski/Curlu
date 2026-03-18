@@ -17,12 +17,9 @@ fn main() -> eframe::Result {
         "Curlu - Curl UI",
         options,
         Box::new(|cc| {
-            let scale = if cfg!(target_os = "linux") {
-                theme::LINUX_SCALE
-            } else {
-                cc.egui_ctx.pixels_per_point()
-            };
-            cc.egui_ctx.set_pixels_per_point(scale);
+            if cfg!(target_os = "linux") {
+                cc.egui_ctx.set_pixels_per_point(theme::LINUX_SCALE);
+            }
             Ok(Box::new(app::App::default()))
         }),
     )
