@@ -2,18 +2,20 @@ use eframe::egui;
 use egui::text::LayoutJob;
 use egui::{Color32, TextFormat};
 
+use crate::theme;
+
 pub fn json(text: &str, font_id: egui::FontId) -> LayoutJob {
     let mut job = LayoutJob::default();
     let chars: Vec<char> = text.chars().collect();
     let len = chars.len();
     let mut i = 0;
 
-    let col_key = Color32::from_rgb(156, 220, 254);
-    let col_string = Color32::from_rgb(206, 145, 120);
-    let col_number = Color32::from_rgb(181, 206, 168);
-    let col_bool = Color32::from_rgb(86, 156, 214);
-    let col_null = Color32::from_rgb(86, 156, 214);
-    let col_punct = Color32::from_rgb(212, 212, 212);
+    let col_key = theme::COLOR_KEY;
+    let col_string = theme::COLOR_STRING;
+    let col_number = theme::COLOR_NUMBER;
+    let col_bool = theme::COLOR_KEYWORD;
+    let col_null = theme::COLOR_KEYWORD;
+    let col_punct = theme::COLOR_PUNCTUATION;
 
     let fmt = |color: Color32| TextFormat {
         font_id: font_id.clone(),
@@ -129,10 +131,10 @@ pub fn json(text: &str, font_id: egui::FontId) -> LayoutJob {
 pub fn headers(text: &str, font_id: egui::FontId) -> LayoutJob {
     let mut job = LayoutJob::default();
 
-    let col_name = Color32::from_rgb(156, 220, 254);
-    let col_value = Color32::from_rgb(206, 145, 120);
-    let col_status = Color32::from_rgb(86, 156, 214);
-    let col_punct = Color32::from_rgb(212, 212, 212);
+    let col_name = theme::COLOR_KEY;
+    let col_value = theme::COLOR_STRING;
+    let col_status = theme::COLOR_KEYWORD;
+    let col_punct = theme::COLOR_PUNCTUATION;
 
     let fmt = |color: Color32| TextFormat {
         font_id: font_id.clone(),

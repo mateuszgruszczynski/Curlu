@@ -2,14 +2,15 @@ mod app;
 mod highlight;
 mod http;
 mod settings;
+mod theme;
 
 use eframe::egui;
 
 fn main() -> eframe::Result {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([1000.0, 700.0])
-            .with_min_inner_size([600.0, 400.0]),
+            .with_inner_size(theme::WINDOW_SIZE)
+            .with_min_inner_size(theme::WINDOW_MIN_SIZE),
         ..Default::default()
     };
     eframe::run_native(
@@ -17,7 +18,7 @@ fn main() -> eframe::Result {
         options,
         Box::new(|cc| {
             let scale = if cfg!(target_os = "linux") {
-                2.0
+                theme::LINUX_SCALE
             } else {
                 cc.egui_ctx.pixels_per_point()
             };

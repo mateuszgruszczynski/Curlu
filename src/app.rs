@@ -5,6 +5,7 @@ use std::sync::mpsc;
 use crate::highlight;
 use crate::http::{self, Method, Response, SavedRequest};
 use crate::settings::Settings;
+use crate::theme;
 
 /// A TextBuffer wrapper that allows selection/copy but silently ignores all edits.
 struct ReadOnlyBuf<'a>(&'a str);
@@ -82,13 +83,12 @@ struct ColumnConfig<'a> {
 }
 
 fn render_column(ui: &mut egui::Ui, headers_height: f32, cfg: ColumnConfig<'_>) {
-    let visuals = ui.visuals().clone();
     let outer_frame = egui::Frame::new()
-        .stroke(visuals.widgets.noninteractive.bg_stroke)
-        .corner_radius(visuals.widgets.noninteractive.corner_radius)
-        .fill(visuals.extreme_bg_color);
+        .stroke(egui::Stroke::new(theme::FRAME_STROKE_WIDTH, theme::FRAME_STROKE_COLOR))
+        .corner_radius(theme::FRAME_CORNER_RADIUS)
+        .fill(theme::FRAME_FILL);
 
-    ui.label(egui::RichText::new(cfg.header_label).size(18.0));
+    ui.label(theme::text(cfg.header_label));
     let width = ui.available_width();
     ui.allocate_ui_with_layout(
         egui::vec2(width, headers_height),
@@ -122,7 +122,7 @@ fn render_column(ui: &mut egui::Ui, headers_height: f32, cfg: ColumnConfig<'_>) 
     );
 
     ui.add_space(4.0);
-    ui.label(egui::RichText::new(cfg.body_label).size(18.0));
+    ui.label(theme::text(cfg.body_label));
 
     let body_height = ui.available_height();
     ui.allocate_ui_with_layout(
@@ -170,6 +170,8 @@ pub struct App {
     pending_response: Option<mpsc::Receiver<Response>>,
     dir_tree: Vec<DirEntry>,
     dir_tree_path: Option<String>,
+    show_curl_window: bool,
+    curl_text: String,
 }
 
 impl Default for App {
@@ -194,6 +196,8 @@ impl Default for App {
             pending_response: None,
             dir_tree,
             dir_tree_path,
+            show_curl_window: false,
+            curl_text: String::new(),
         }
     }
 }
@@ -271,6 +275,10 @@ impl App {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let mut style = (*ctx.style()).clone();
+        theme::apply(&mut style);
+        ctx.set_style(style);
+
         // Check for completed async response
         if let Some(rx) = &self.pending_response
             && let Ok(resp) = rx.try_recv() {
@@ -279,47 +287,39 @@ impl eframe::App for App {
                 self.pending_response = None;
             }
 
-        // Refresh dir tree if settings directory changed
-        if self.dir_tree_path != self.settings.default_directory {
-            self.refresh_dir_tree();
-        }
-
-        egui::TopBottomPanel::top("toolbar").show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                if ui.selectable_label(self.show_side_panel, egui::RichText::new("Saved Requests").size(18.0)).clicked() {
-                    self.show_side_panel = !self.show_side_panel;
-                }
-            });
-        });
+        // // Refresh dir tree if settings directory changed
+        // if self.dir_tree_path != self.settings.default_directory {
+        //     self.refresh_dir_tree();
+        // }
 
         if self.show_side_panel {
             egui::SidePanel::left("file_browser")
                 .resizable(true)
-                .min_width(250.0)
-                .default_width(250.0)
+                .min_width(theme::SIDE_PANEL_MIN_WIDTH)
+                .default_width(theme::SIDE_PANEL_MIN_WIDTH)
                 .show(ctx, |ui| {
-                    ui.label("Directory:");
+                    // ui.label("Directory:");
+                    // ui.horizontal(|ui| {
+                    //     let display = self
+                    //         .settings
+                    //         .default_directory
+                    //         .as_deref()
+                    //         .unwrap_or("(not set)");
+                    //     ui.label(display);
+                    // });
                     ui.horizontal(|ui| {
-                        let display = self
-                            .settings
-                            .default_directory
-                            .as_deref()
-                            .unwrap_or("(not set)");
-                        ui.label(display);
-                    });
-                    ui.horizontal(|ui| {
-                        if ui.button("Browse...").clicked()
+                        if ui.button("Change directory").clicked()
                             && let Some(path) = rfd::FileDialog::new().pick_folder() {
                                 self.settings.default_directory =
                                     Some(path.to_string_lossy().into_owned());
                                 self.settings.save();
                                 self.refresh_dir_tree();
                             }
-                        if self.settings.default_directory.is_some() && ui.button("Clear").clicked() {
-                            self.settings.default_directory = None;
-                            self.settings.save();
-                            self.refresh_dir_tree();
-                        }
+                        // if self.settings.default_directory.is_some() && ui.button("Clear").clicked() {
+                        //     self.settings.default_directory = None;
+                        //     self.settings.save();
+                        //     self.refresh_dir_tree();
+                        // }
                         if self.settings.default_directory.is_some() && ui.button("Refresh").clicked() {
                             self.refresh_dir_tree();
                         }
@@ -350,30 +350,55 @@ impl eframe::App for App {
             ui.fonts(|f| f.layout_job(job))
         };
 
-        let is_sending = self.pending_response.is_some();
+        // let is_sending = self.pending_response.is_some();
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.horizontal(|ui| {
-                egui::ComboBox::from_id_salt("method")
-                    .width(150.0)
-                    .selected_text(egui::RichText::new(self.method.as_str()).size(18.0))
-                    .show_ui(ui, |ui| {
-                        for m in Method::ALL {
-                            ui.selectable_value(&mut self.method, *m, egui::RichText::new(m.as_str()).size(21.0));
-                        }
-                    });
+                if ui.add_sized(theme::BUTTON_SIZE, egui::Button::new(theme::text("HIST"))).clicked() {
+                    self.show_side_panel = !self.show_side_panel;
+                }
 
-                let url_font = egui::FontId::proportional(18.0);
-                ui.add(egui::TextEdit::singleline(&mut self.url).desired_width(ui.available_width() - 180.0).font(url_font));
+                ui.allocate_ui_with_layout(
+                    egui::vec2(theme::COMBOBOX_SIZE[0], theme::COMBOBOX_SIZE[1]),
+                    egui::Layout::centered_and_justified(egui::Direction::LeftToRight),
+                    |ui| {
+                        egui::ComboBox::from_id_salt("method")
+                            .width(theme::COMBOBOX_SIZE[0])
+                            .selected_text(theme::text(self.method.as_str()))
+                            .show_ui(ui, |ui| {
+                                for m in Method::ALL {
+                                    ui.selectable_value(&mut self.method, *m, theme::text(m.as_str()));
+                                }
+                            });
+                    },
+                );
 
-                if ui.add_enabled(!is_sending, egui::Button::new(egui::RichText::new("Send").size(18.0))).clicked() {
+                ui.add_sized(
+                    [ui.available_width() - theme::URL_WIDTH_OFFSET, theme::URL_INPUT_HEIGHT],
+                    egui::TextEdit::singleline(&mut self.url)
+                        .font(theme::url_font())
+                        .margin(theme::URL_INPUT_MARGIN),
+                );
+
+
+                if ui.add_sized(theme::BUTTON_SIZE, egui::Button::new(theme::text("Send"))).clicked() {
                     self.send_request(ctx);
                 }
-                if ui.button(egui::RichText::new("Save").size(18.0)).clicked() {
+                if ui.add_sized(theme::BUTTON_SIZE, egui::Button::new(theme::text("Save"))).clicked() {
                     self.save_request();
                 }
-                if ui.button(egui::RichText::new("Load").size(18.0)).clicked() {
+                if ui.add_sized(theme::BUTTON_SIZE, egui::Button::new(theme::text("Load"))).clicked() {
                     self.load_request();
+                }
+                if ui.add_sized(theme::BUTTON_SIZE, egui::Button::new(theme::text("Show"))).clicked() {
+                    let saved = SavedRequest {
+                        method: self.method,
+                        url: self.url.clone(),
+                        headers: self.request_headers.clone(),
+                        body: self.request_body.clone(),
+                    };
+                    self.curl_text = saved.to_curl();
+                    self.show_curl_window = true;
                 }
             });
 
@@ -409,5 +434,25 @@ impl eframe::App for App {
                 });
             });
         });
+
+        if self.show_curl_window {
+            let screen = ctx.screen_rect();
+            egui::Window::new("Curl Command")
+                .open(&mut self.show_curl_window)
+                .resizable(true)
+                .default_width(500.0)
+                .pivot(egui::Align2::CENTER_CENTER)
+                .default_pos(screen.center())
+                .show(ctx, |ui| {
+                    ui.add(
+                        egui::TextEdit::multiline(&mut ReadOnlyBuf(&self.curl_text))
+                            .font(egui::TextStyle::Monospace)
+                            .desired_width(f32::INFINITY),
+                    );
+                    if ui.button("Copy to clipboard").clicked() {
+                        ui.ctx().copy_text(self.curl_text.clone());
+                    }
+                });
+        }
     }
 }
