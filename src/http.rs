@@ -261,6 +261,10 @@ pub fn send_request(method: Method, url: &str, raw_headers: &str, body: &str) ->
             let body = response
                 .text()
                 .unwrap_or_else(|e| format!("Error reading body: {e}"));
+            let body = match serde_json::from_str::<serde_json::Value>(&body) {
+                Ok(json) => serde_json::to_string_pretty(&json).unwrap_or(body),
+                Err(_) => body,
+            };
             Response {
                 headers: header_text,
                 body,
