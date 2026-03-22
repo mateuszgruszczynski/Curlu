@@ -330,6 +330,36 @@ impl eframe::App for App {
                 self.pending_response = None;
             }
 
+        // Menu bar
+        egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
+            egui::menu::bar(ui, |ui| {
+                if ui.button("New Request").clicked() {
+                    self.new_request();
+                }
+                if ui.button("Open...").clicked() {
+                    self.load_request();
+                }
+                let save_enabled = self.current_file.is_some();
+                if ui.add_enabled(save_enabled, egui::Button::new("Save")).clicked() {
+                    self.show_save_confirm = true;
+                }
+                if ui.button("Save As...").clicked() {
+                    self.save_as();
+                }
+
+                ui.separator();
+
+                ui.checkbox(&mut self.show_side_panel, "File Browser");
+
+                ui.separator();
+
+                if ui.button("Show as curl").clicked() {
+                    self.curl_text = self.build_saved_request().to_curl();
+                    self.show_curl_window = true;
+                }
+            });
+        });
+
         // // Refresh dir tree if settings directory changed
         // if self.dir_tree_path != self.settings.default_directory {
         //     self.refresh_dir_tree();
@@ -397,13 +427,6 @@ impl eframe::App for App {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.horizontal(|ui| {
-                if ui.add_sized(theme::BUTTON_SIZE, egui::Button::new(theme::icon("\u{1F4C1}")))
-                    .on_hover_text("File browser")
-                    .clicked()
-                {
-                    self.show_side_panel = !self.show_side_panel;
-                }
-
                 ui.allocate_ui_with_layout(
                     egui::vec2(theme::COMBOBOX_SIZE[0], theme::COMBOBOX_SIZE[1]),
                     egui::Layout::centered_and_justified(egui::Direction::LeftToRight),
@@ -420,7 +443,7 @@ impl eframe::App for App {
                 );
 
                 ui.add_sized(
-                    [ui.available_width() - theme::URL_WIDTH_OFFSET, theme::URL_INPUT_HEIGHT],
+                    [ui.available_width() - theme::BUTTON_SIZE[0] - theme::ITEM_SPACING.x, theme::URL_INPUT_HEIGHT],
                     egui::TextEdit::multiline(&mut self.url)
                         .font(theme::url_font())
                         .margin(theme::URL_INPUT_MARGIN)
@@ -428,44 +451,11 @@ impl eframe::App for App {
                         .desired_width(f32::INFINITY),
                 );
 
-
                 if ui.add_sized(theme::BUTTON_SIZE, egui::Button::new(theme::icon("\u{25B6}")))
                     .on_hover_text("Send request")
                     .clicked()
                 {
                     self.send_request(ctx);
-                }
-                let save_enabled = self.current_file.is_some();
-                if ui.add_enabled(save_enabled, egui::Button::new(theme::icon("\u{1F4BE}")).min_size(theme::BUTTON_SIZE.into()))
-                    .on_hover_text("Save to current file")
-                    .clicked()
-                {
-                    self.show_save_confirm = true;
-                }
-                if ui.add_sized(theme::BUTTON_SIZE, egui::Button::new(theme::icon("\u{1F4E5}")))
-                    .on_hover_text("Save as new file")
-                    .clicked()
-                {
-                    self.save_as();
-                }
-                if ui.add_sized(theme::BUTTON_SIZE, egui::Button::new(theme::icon("\u{1F4C4}")))
-                    .on_hover_text("Load from file")
-                    .clicked()
-                {
-                    self.load_request();
-                }
-                if ui.add_sized(theme::BUTTON_SIZE, egui::Button::new(theme::icon("\u{2795}")))
-                    .on_hover_text("New request")
-                    .clicked()
-                {
-                    self.new_request();
-                }
-                if ui.add_sized(theme::BUTTON_SIZE, egui::Button::new(theme::icon("\u{1F4CB}")))
-                    .on_hover_text("Show as curl command")
-                    .clicked()
-                {
-                    self.curl_text = self.build_saved_request().to_curl();
-                    self.show_curl_window = true;
                 }
             });
 
@@ -516,7 +506,7 @@ impl eframe::App for App {
 
         if self.show_curl_window {
             let screen = ctx.screen_rect();
-            egui::Window::new("Curl Command")
+            egui::Window::new("Curl")
                 .open(&mut self.show_curl_window)
                 .resizable(true)
                 .default_width(500.0)

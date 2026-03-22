@@ -48,9 +48,6 @@ pub const SIDE_PANEL_MIN_WIDTH: f32 = 250.0;
 // Scaling
 pub const LINUX_SCALE: f32 = 1.0;
 
-// Toolbar offset for URL width calculation
-pub const URL_WIDTH_OFFSET: f32 = 380.0;
-
 /// Apply theme to egui style
 pub fn apply(style: &mut egui::Style) {
     style.spacing.item_spacing = ITEM_SPACING;
