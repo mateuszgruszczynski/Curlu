@@ -80,6 +80,7 @@ struct ColumnConfig<'a> {
     body_scroll_id: &'a str,
     header_layouter: &'a mut dyn FnMut(&egui::Ui, &str, f32) -> std::sync::Arc<egui::Galley>,
     body_layouter: &'a mut dyn FnMut(&egui::Ui, &str, f32) -> std::sync::Arc<egui::Galley>,
+    show_format_button: bool,
 }
 
 fn render_column(ui: &mut egui::Ui, headers_height: f32, cfg: ColumnConfig<'_>) {
@@ -122,7 +123,16 @@ fn render_column(ui: &mut egui::Ui, headers_height: f32, cfg: ColumnConfig<'_>) 
     );
 
     ui.add_space(4.0);
-    ui.label(theme::text(cfg.body_label));
+    ui.horizontal(|ui| {
+        ui.label(theme::text(cfg.body_label));
+        if cfg.show_format_button {
+            if ui.small_button("{ }").on_hover_text("Format JSON").clicked() {
+                if let Some(formatted) = http::pretty_print_json(cfg.body_text) {
+                    *cfg.body_text = formatted;
+                }
+            }
+        }
+    });
 
     let body_height = ui.available_height();
     ui.allocate_ui_with_layout(
@@ -172,6 +182,8 @@ pub struct App {
     dir_tree_path: Option<String>,
     show_curl_window: bool,
     curl_text: String,
+    current_file: Option<PathBuf>,
+    show_save_confirm: bool,
 }
 
 impl Default for App {
@@ -198,6 +210,8 @@ impl Default for App {
             dir_tree_path,
             show_curl_window: false,
             curl_text: String::new(),
+            current_file: None,
+            show_save_confirm: false,
         }
     }
 }
@@ -241,21 +255,6 @@ impl App {
         }
     }
 
-    fn save_request(&self) {
-        let saved = SavedRequest {
-            method: self.method,
-            url: self.url.clone(),
-            headers: self.request_headers.clone(),
-            body: self.request_body.clone(),
-        };
-        if let Some(mut path) = self.file_dialog().set_file_name("request.curl").save_file() {
-            if path.extension().is_none_or(|ext| ext != "curl") {
-                path.set_extension("curl");
-            }
-            let _ = std::fs::write(path, saved.to_curl());
-        }
-    }
-
     fn load_request(&mut self) {
         if let Some(path) = self.file_dialog().pick_file() {
             self.load_request_from_path(&path);
@@ -268,9 +267,49 @@ impl App {
                 self.method = saved.method;
                 self.url = saved.url;
                 self.request_headers = saved.headers;
-                self.request_body = saved.body;
+                self.request_body = http::pretty_print_json(&saved.body)
+                    .unwrap_or(saved.body);
+                self.current_file = Some(path.to_path_buf());
             }
     }
+
+    fn save_to_current_file(&self) {
+        if let Some(path) = &self.current_file {
+            let saved = self.build_saved_request();
+            let _ = std::fs::write(path, saved.to_curl());
+        }
+    }
+
+    fn save_as(&mut self) {
+        let saved = self.build_saved_request();
+        if let Some(mut path) = self.file_dialog().set_file_name("request.curl").save_file() {
+            if path.extension().is_none_or(|ext| ext != "curl") {
+                path.set_extension("curl");
+            }
+            let _ = std::fs::write(&path, saved.to_curl());
+            self.current_file = Some(path);
+        }
+    }
+
+    fn new_request(&mut self) {
+        self.method = Method::Get;
+        self.url = String::new();
+        self.request_headers = String::new();
+        self.request_body = String::new();
+        self.response_headers = String::new();
+        self.response_body = String::new();
+        self.current_file = None;
+    }
+
+    fn build_saved_request(&self) -> SavedRequest {
+        SavedRequest {
+            method: self.method,
+            url: self.url.clone(),
+            headers: self.request_headers.clone(),
+            body: self.request_body.clone(),
+        }
+    }
+
 }
 
 impl eframe::App for App {
@@ -358,7 +397,10 @@ impl eframe::App for App {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.horizontal(|ui| {
-                if ui.add_sized(theme::BUTTON_SIZE, egui::Button::new(theme::text("HIST"))).clicked() {
+                if ui.add_sized(theme::BUTTON_SIZE, egui::Button::new(theme::icon("\u{1F4C1}")))
+                    .on_hover_text("File browser")
+                    .clicked()
+                {
                     self.show_side_panel = !self.show_side_panel;
                 }
 
@@ -379,32 +421,63 @@ impl eframe::App for App {
 
                 ui.add_sized(
                     [ui.available_width() - theme::URL_WIDTH_OFFSET, theme::URL_INPUT_HEIGHT],
-                    egui::TextEdit::singleline(&mut self.url)
+                    egui::TextEdit::multiline(&mut self.url)
                         .font(theme::url_font())
-                        .margin(theme::URL_INPUT_MARGIN),
+                        .margin(theme::URL_INPUT_MARGIN)
+                        .desired_rows(1)
+                        .desired_width(f32::INFINITY),
                 );
 
 
-                if ui.add_sized(theme::BUTTON_SIZE, egui::Button::new(theme::text("Send"))).clicked() {
+                if ui.add_sized(theme::BUTTON_SIZE, egui::Button::new(theme::icon("\u{25B6}")))
+                    .on_hover_text("Send request")
+                    .clicked()
+                {
                     self.send_request(ctx);
                 }
-                if ui.add_sized(theme::BUTTON_SIZE, egui::Button::new(theme::text("Save"))).clicked() {
-                    self.save_request();
+                let save_enabled = self.current_file.is_some();
+                if ui.add_enabled(save_enabled, egui::Button::new(theme::icon("\u{1F4BE}")).min_size(theme::BUTTON_SIZE.into()))
+                    .on_hover_text("Save to current file")
+                    .clicked()
+                {
+                    self.show_save_confirm = true;
                 }
-                if ui.add_sized(theme::BUTTON_SIZE, egui::Button::new(theme::text("Load"))).clicked() {
+                if ui.add_sized(theme::BUTTON_SIZE, egui::Button::new(theme::icon("\u{1F4E5}")))
+                    .on_hover_text("Save as new file")
+                    .clicked()
+                {
+                    self.save_as();
+                }
+                if ui.add_sized(theme::BUTTON_SIZE, egui::Button::new(theme::icon("\u{1F4C4}")))
+                    .on_hover_text("Load from file")
+                    .clicked()
+                {
                     self.load_request();
                 }
-                if ui.add_sized(theme::BUTTON_SIZE, egui::Button::new(theme::text("Show"))).clicked() {
-                    let saved = SavedRequest {
-                        method: self.method,
-                        url: self.url.clone(),
-                        headers: self.request_headers.clone(),
-                        body: self.request_body.clone(),
-                    };
-                    self.curl_text = saved.to_curl();
+                if ui.add_sized(theme::BUTTON_SIZE, egui::Button::new(theme::icon("\u{2795}")))
+                    .on_hover_text("New request")
+                    .clicked()
+                {
+                    self.new_request();
+                }
+                if ui.add_sized(theme::BUTTON_SIZE, egui::Button::new(theme::icon("\u{1F4CB}")))
+                    .on_hover_text("Show as curl command")
+                    .clicked()
+                {
+                    self.curl_text = self.build_saved_request().to_curl();
                     self.show_curl_window = true;
                 }
             });
+
+            if let Some(path) = &self.current_file {
+                let file_name = path.file_name()
+                    .map(|f| f.to_string_lossy().into_owned())
+                    .unwrap_or_default();
+                ui.horizontal(|ui| {
+                    ui.label(theme::text(&format!("File: {}", file_name)))
+                        .on_hover_text(path.display().to_string());
+                });
+            }
 
             ui.add_space(4.0);
 
@@ -421,6 +494,7 @@ impl eframe::App for App {
                     body_scroll_id: "req_body_scroll",
                     header_layouter: &mut header_layouter.clone(),
                     body_layouter: &mut json_layouter.clone(),
+                    show_format_button: true,
                 });
 
                 render_column(&mut cols[1], 250.0, ColumnConfig {
@@ -435,6 +509,7 @@ impl eframe::App for App {
                     body_scroll_id: "resp_body_scroll",
                     header_layouter: &mut header_layouter.clone(),
                     body_layouter: &mut json_layouter.clone(),
+                    show_format_button: false,
                 });
             });
         });
@@ -456,6 +531,31 @@ impl eframe::App for App {
                     if ui.button("Copy to clipboard").clicked() {
                         ui.ctx().copy_text(self.curl_text.clone());
                     }
+                });
+        }
+
+        if self.show_save_confirm {
+            let screen = ctx.screen_rect();
+            egui::Window::new("Overwrite file?")
+                .collapsible(false)
+                .resizable(false)
+                .pivot(egui::Align2::CENTER_CENTER)
+                .default_pos(screen.center())
+                .show(ctx, |ui| {
+                    let file_name = self.current_file.as_ref()
+                        .and_then(|p| p.file_name())
+                        .map(|f| f.to_string_lossy().into_owned())
+                        .unwrap_or_default();
+                    ui.label(format!("Overwrite \"{}\"?", file_name));
+                    ui.horizontal(|ui| {
+                        if ui.button("Save").clicked() {
+                            self.save_to_current_file();
+                            self.show_save_confirm = false;
+                        }
+                        if ui.button("Cancel").clicked() {
+                            self.show_save_confirm = false;
+                        }
+                    });
                 });
         }
     }

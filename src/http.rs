@@ -203,6 +203,11 @@ fn shell_tokenize(input: &str) -> Vec<String> {
     tokens
 }
 
+pub fn pretty_print_json(text: &str) -> Option<String> {
+    let val: serde_json::Value = serde_json::from_str(text.trim()).ok()?;
+    serde_json::to_string_pretty(&val).ok()
+}
+
 pub struct Response {
     pub headers: String,
     pub body: String,

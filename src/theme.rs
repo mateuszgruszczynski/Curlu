@@ -27,6 +27,7 @@ pub const FRAME_CORNER_RADIUS: u8 = 6;
 
 // Font sizes
 pub const FONT_SIZE_DEFAULT: f32 = 12.0;
+pub const FONT_SIZE_ICON: f32 = 18.0;
 
 // Element sizes
 pub const BUTTON_SIZE: [f32; 2] = [50.0, 50.0];
@@ -48,7 +49,7 @@ pub const SIDE_PANEL_MIN_WIDTH: f32 = 250.0;
 pub const LINUX_SCALE: f32 = 1.0;
 
 // Toolbar offset for URL width calculation
-pub const URL_WIDTH_OFFSET: f32 = 240.0;
+pub const URL_WIDTH_OFFSET: f32 = 380.0;
 
 /// Apply theme to egui style
 pub fn apply(style: &mut egui::Style) {
@@ -89,4 +90,9 @@ pub fn url_font() -> egui::FontId {
 /// Styled RichText with the default font size
 pub fn text(s: &str) -> egui::RichText {
     egui::RichText::new(s).size(FONT_SIZE_DEFAULT)
+}
+
+/// Styled RichText for button icons
+pub fn icon(s: &str) -> egui::RichText {
+    egui::RichText::new(s).size(FONT_SIZE_ICON)
 }
