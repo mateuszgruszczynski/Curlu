@@ -331,7 +331,11 @@ impl eframe::App for App {
             }
 
         // Menu bar
-        egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
+        egui::TopBottomPanel::top("menu_bar")
+            .frame(egui::Frame::new()
+                .inner_margin(egui::Margin::symmetric(8, 6))
+                .fill(theme::MENU_BAR_BG))
+            .show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
                 if ui.button("New Request").clicked() {
                     self.new_request();
@@ -370,6 +374,9 @@ impl eframe::App for App {
                 .resizable(true)
                 .min_width(theme::SIDE_PANEL_MIN_WIDTH)
                 .default_width(theme::SIDE_PANEL_MIN_WIDTH)
+                .frame(egui::Frame::new()
+                    .inner_margin(egui::Margin::symmetric(8, 6))
+                    .fill(theme::MENU_BAR_BG))
                 .show(ctx, |ui| {
                     // ui.label("Directory:");
                     // ui.horizontal(|ui| {
@@ -381,21 +388,24 @@ impl eframe::App for App {
                     //     ui.label(display);
                     // });
                     ui.horizontal(|ui| {
-                        if ui.button("Change directory").clicked()
-                            && let Some(path) = rfd::FileDialog::new().pick_folder() {
-                                self.settings.default_directory =
-                                    Some(path.to_string_lossy().into_owned());
-                                self.settings.save();
-                                self.refresh_dir_tree();
-                            }
-                        // if self.settings.default_directory.is_some() && ui.button("Clear").clicked() {
-                        //     self.settings.default_directory = None;
-                        //     self.settings.save();
-                        //     self.refresh_dir_tree();
-                        // }
-                        if self.settings.default_directory.is_some() && ui.button("Refresh").clicked() {
-                            self.refresh_dir_tree();
-                        }
+                        ui.visuals_mut().widgets.inactive.weak_bg_fill = theme::MENU_BAR_BG;
+                        ui.visuals_mut().widgets.inactive.bg_stroke = egui::Stroke::NONE;
+                        ui.visuals_mut().widgets.hovered.weak_bg_fill = theme::BUTTON_HOVER_FILL;
+                        ui.visuals_mut().widgets.hovered.bg_stroke = egui::Stroke::NONE;
+                        ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
+                            ui.horizontal(|ui| {
+                                if ui.button("Change directory").clicked()
+                                    && let Some(path) = rfd::FileDialog::new().pick_folder() {
+                                        self.settings.default_directory =
+                                            Some(path.to_string_lossy().into_owned());
+                                        self.settings.save();
+                                        self.refresh_dir_tree();
+                                    }
+                                if self.settings.default_directory.is_some() && ui.button("Refresh").clicked() {
+                                    self.refresh_dir_tree();
+                                }
+                            });
+                        });
                     });
                     ui.separator();
                     if !self.dir_tree.is_empty() {
@@ -431,6 +441,9 @@ impl eframe::App for App {
                     egui::vec2(theme::COMBOBOX_SIZE[0], theme::COMBOBOX_SIZE[1]),
                     egui::Layout::centered_and_justified(egui::Direction::LeftToRight),
                     |ui| {
+                        ui.visuals_mut().widgets.inactive.weak_bg_fill = theme::INPUT_BG;
+                        ui.visuals_mut().widgets.inactive.bg_stroke = egui::Stroke::new(1.0, theme::INPUT_STROKE_COLOR);
+                        ui.visuals_mut().widgets.hovered.weak_bg_fill = theme::INPUT_BG;
                         egui::ComboBox::from_id_salt("method")
                             .width(theme::COMBOBOX_SIZE[0])
                             .selected_text(theme::text(self.method.as_str()))
@@ -451,7 +464,7 @@ impl eframe::App for App {
                         .desired_width(f32::INFINITY),
                 );
 
-                if ui.add_sized(theme::BUTTON_SIZE, egui::Button::new(theme::icon("\u{25B6}")))
+                if ui.add_sized(theme::BUTTON_SIZE, theme::send_button())
                     .on_hover_text("Send request")
                     .clicked()
                 {

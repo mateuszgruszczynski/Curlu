@@ -1,27 +1,45 @@
 use eframe::egui;
 use egui::Color32;
 
-// Syntax highlighting colors
-pub const COLOR_KEY: Color32 = Color32::from_rgb(130, 206, 255);
-pub const COLOR_STRING: Color32 = Color32::from_rgb(242, 173, 118);
-pub const COLOR_NUMBER: Color32 = Color32::from_rgb(160, 228, 155);
-pub const COLOR_KEYWORD: Color32 = Color32::from_rgb(120, 180, 240);
-pub const COLOR_PUNCTUATION: Color32 = Color32::from_rgb(180, 185, 195);
+/// Convert a hex literal (0xRRGGBB) to Color32 at compile time.
+macro_rules! hex {
+    ($hex:expr) => {
+        Color32::from_rgb(
+            (($hex >> 16) & 0xFF) as u8,
+            (($hex >> 8) & 0xFF) as u8,
+            ($hex & 0xFF) as u8,
+        )
+    };
+}
 
-// Widget colors
-pub const BUTTON_FILL: Color32 = Color32::from_rgb(50, 55, 65);
-pub const BUTTON_HOVER_FILL: Color32 = Color32::from_rgb(65, 72, 85);
-pub const BUTTON_ACTIVE_FILL: Color32 = Color32::from_rgb(75, 83, 100);
+// Syntax highlighting colors
+pub const COLOR_KEY: Color32 = hex!(0x82CEFF);
+pub const COLOR_STRING: Color32 = hex!(0xF2AD76);
+pub const COLOR_NUMBER: Color32 = hex!(0xA0E49B);
+pub const COLOR_KEYWORD: Color32 = hex!(0x78B4F0);
+pub const COLOR_PUNCTUATION: Color32 = hex!(0xB4B9C3);
+
+// Generic button colors (matches input fields)
+pub const BUTTON_FILL: Color32 = hex!(0x2f2f2f);
+pub const BUTTON_HOVER_FILL: Color32 = hex!(0x3a3a3a);
+pub const BUTTON_ACTIVE_FILL: Color32 = hex!(0x454545);
 pub const BUTTON_CORNER_RADIUS: u8 = 6;
-pub const INPUT_BG: Color32 = Color32::from_rgb(28, 31, 38);
-pub const INPUT_STROKE_COLOR: Color32 = Color32::from_rgb(68, 76, 92);
+
+// Send button colors (lime green)
+pub const SEND_BUTTON_FILL: Color32 = hex!(0x4CAF50);
+pub const SEND_BUTTON_TEXT: Color32 = hex!(0x1f1f1f);
+
+// Input field colors
+pub const INPUT_BG: Color32 = hex!(0x2f2f2f);
+pub const INPUT_STROKE_COLOR: Color32 = hex!(0x3f3f3f);
 
 // App background
-pub const PANEL_BG: Color32 = Color32::from_rgb(24, 27, 33);
+pub const PANEL_BG: Color32 = hex!(0x1f1f1f);
+pub const MENU_BAR_BG: Color32 = hex!(0x1a1a1a);
 
 // UI frame colors
-pub const FRAME_FILL: Color32 = Color32::from_rgb(28, 31, 38);
-pub const FRAME_STROKE_COLOR: Color32 = Color32::from_rgb(68, 76, 92);
+pub const FRAME_FILL: Color32 = hex!(0x2f2f2f);
+pub const FRAME_STROKE_COLOR: Color32 = hex!(0x3f3f3f);
 pub const FRAME_STROKE_WIDTH: f32 = 1.0;
 pub const FRAME_CORNER_RADIUS: u8 = 6;
 
@@ -47,6 +65,9 @@ pub const SIDE_PANEL_MIN_WIDTH: f32 = 250.0;
 
 // Scaling
 pub const LINUX_SCALE: f32 = 1.0;
+
+// Toolbar offset for URL width calculation
+pub const URL_WIDTH_OFFSET: f32 = 30.0;
 
 /// Apply theme to egui style
 pub fn apply(style: &mut egui::Style) {
@@ -92,4 +113,14 @@ pub fn text(s: &str) -> egui::RichText {
 /// Styled RichText for button icons
 pub fn icon(s: &str) -> egui::RichText {
     egui::RichText::new(s).size(FONT_SIZE_ICON)
+}
+
+/// Send button with lime green styling
+pub fn send_button() -> egui::Button<'static> {
+    egui::Button::new(
+        egui::RichText::new("\u{25B6}")
+            .size(FONT_SIZE_ICON)
+            .color(SEND_BUTTON_TEXT),
+    )
+    .fill(SEND_BUTTON_FILL)
 }
