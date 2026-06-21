@@ -9,9 +9,28 @@ fn config_path() -> PathBuf {
     path
 }
 
-#[derive(Serialize, Deserialize, Clone, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum Theme {
+    #[default]
+    Dark,
+    Light,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum Accent {
+    #[default]
+    Blue,
+    Green,
+    Amber,
+}
+
+#[derive(Clone, Default, Serialize, Deserialize)]
 pub struct Settings {
     pub default_directory: Option<String>,
+    #[serde(default)]
+    pub theme: Theme,
+    #[serde(default)]
+    pub accent: Accent,
 }
 
 impl Settings {

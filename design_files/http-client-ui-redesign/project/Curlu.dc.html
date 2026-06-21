@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    html, body { margin: 0; padding: 0; }
+  </style>
+</helmet>
+<div style="width:max-content; min-width:100%; min-height:100vh; box-sizing:border-box; padding:48px; background:#e7e5df; font-family:-apple-system, 'Segoe UI', system-ui, 'Helvetica Neue', Arial, sans-serif;">
+
+  <div style="font-size:12px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; color:#9a948a; margin-bottom:10px;">Curlu · egui redesign</div>
+  <div style="font-size:16px; line-height:1.55; color:#54504a; max-width:780px; margin-bottom:40px;">A modernized layout for the Curlu HTTP client — flat panels, 4px corners, a status bar, response-timing chips, and syntax-highlighted JSON. Built within egui's constraints: solid fills, hairline strokes, no soft shadows or gradients. Hero frames follow the <b style="color:#3a362f;">{{ accentLabel }}</b> accent (tweakable); the bottom row shows all three.</div>
+
+  <div style="display:flex; flex-direction:column; gap:44px; align-items:flex-start;">
+
+    <div>
+      <div style="font-size:12px; font-weight:600; letter-spacing:1.2px; text-transform:uppercase; color:#7c766c; margin-bottom:13px;">Light · {{ accentLabel }}</div>
+      <div style="width:1680px; border-radius:7px; box-shadow:0 6px 28px rgba(40,36,30,0.16); flex:none;">
+        <dc-import name="CurluApp" theme="light" accent="{{ accent }}" hint-size="1680px,1024px"></dc-import>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-size:12px; font-weight:600; letter-spacing:1.2px; text-transform:uppercase; color:#7c766c; margin-bottom:13px;">Dark · {{ accentLabel }}</div>
+      <div style="width:1680px; border-radius:7px; box-shadow:0 6px 28px rgba(40,36,30,0.16); flex:none;">
+        <dc-import name="CurluApp" theme="dark" accent="{{ accent }}" hint-size="1680px,1024px"></dc-import>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-size:12px; font-weight:600; letter-spacing:1.2px; text-transform:uppercase; color:#7c766c; margin-bottom:13px;">Accent options · dark</div>
+      <div style="display:flex; gap:40px; align-items:flex-start;">
+        <div style="flex:none;">
+          <div style="font-size:11px; font-weight:600; letter-spacing:0.6px; color:#8b857b; margin-bottom:10px;">Blue</div>
+          <div style="width:1680px; border-radius:7px; box-shadow:0 6px 28px rgba(40,36,30,0.16);">
+            <dc-import name="CurluApp" theme="dark" accent="blue" hint-size="1680px,1024px"></dc-import>
+          </div>
+        </div>
+        <div style="flex:none;">
+          <div style="font-size:11px; font-weight:600; letter-spacing:0.6px; color:#8b857b; margin-bottom:10px;">Green</div>
+          <div style="width:1680px; border-radius:7px; box-shadow:0 6px 28px rgba(40,36,30,0.16);">
+            <dc-import name="CurluApp" theme="dark" accent="green" hint-size="1680px,1024px"></dc-import>
+          </div>
+        </div>
+        <div style="flex:none;">
+          <div style="font-size:11px; font-weight:600; letter-spacing:0.6px; color:#8b857b; margin-bottom:10px;">Amber</div>
+          <div style="width:1680px; border-radius:7px; box-shadow:0 6px 28px rgba(40,36,30,0.16);">
+            <dc-import name="CurluApp" theme="dark" accent="amber" hint-size="1680px,1024px"></dc-import>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;accent&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;blue&quot;,&quot;green&quot;,&quot;amber&quot;],&quot;default&quot;:&quot;blue&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const accent = ['blue', 'green', 'amber'].includes(this.props.accent) ? this.props.accent : 'blue';
+    const labels = { blue: 'Blue', green: 'Green', amber: 'Amber' };
+    return { accent, accentLabel: labels[accent] };
+  }
+}
+</script>
+</body>
+</html>
